@@ -13,6 +13,12 @@ This repository is deployment scaffolding for running Ghost on Railway with:
 
 Target platform is **Railway**. Keep changes aligned with that platform unless explicitly requested otherwise.
 
+
+
+
+
+## Monorepo Structure
+
 ## Repository Layout
 
 - `README.md` - primary onboarding and architecture doc
@@ -28,6 +34,13 @@ Target platform is **Railway**. Keep changes aligned with that platform unless e
 - `.github/workflows/validate.yml` - lightweight CI validation
 
 ## Source-of-Truth Rules
+
+
+
+
+
+### apps/* - React-based UI applications
+Two categories of apps:
 
 1. Environment variable names and requirements must be defined in `.env.example` first.
 2. Deployment behavior should be documented in `docs/railway-deploy.md`.
@@ -60,3 +73,7 @@ yamllint docker-compose.yml .github/workflows/validate.yml
 - Prefer explicit docs over implied behavior.
 - Keep scripts POSIX shell and idempotent where practical.
 - If infra/env changes are made, update `README.md` and `docs/*.md` together.
+### Test Issues
+- **E2E failures:** Check `e2e/CLAUDE.md` for debugging tips
+- **Docker issues:** `yarn docker:clean && yarn docker:build`
+
