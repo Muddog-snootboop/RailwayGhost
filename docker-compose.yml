@@ -1,0 +1,58 @@
+services:
+  ghost:
+    image: ghost:5-alpine
+    container_name: ghost_app
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "${PORT:-2368}:2368"
+    environment:
+      url: ${url}
+      NODE_ENV: ${NODE_ENV:-development}
+      database__client: ${database__client:-mysql}
+      database__connection__host: ${database__connection__host:-mysql}
+      database__connection__port: ${database__connection__port:-3306}
+      database__connection__user: ${database__connection__user}
+      database__connection__password: ${database__connection__password}
+      database__connection__database: ${database__connection__database}
+      mail__transport: ${mail__transport}
+      mail__from: ${mail__from}
+      mail__options__host: ${mail__options__host}
+      mail__options__port: ${mail__options__port}
+      mail__options__secure: ${mail__options__secure}
+      mail__options__auth__user: ${mail__options__auth__user}
+      mail__options__auth__pass: ${mail__options__auth__pass}
+    volumes:
+      - ./data/ghost/content:/var/lib/ghost/content
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:2368/ghost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+
+  mysql:
+    image: mysql:8.0
+    container_name: ghost_mysql
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-ghost}
+      MYSQL_USER: ${MYSQL_USER:-ghost}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${MYSQL_USER:-ghost}", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+volumes:
+  mysql_data:

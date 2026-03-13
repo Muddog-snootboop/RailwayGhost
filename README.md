@@ -1,104 +1,137 @@
-&nbsp;
-<p align="center">
-  <a href="https://ghost.org/#gh-light-mode-only" target="_blank">
-    <img src="https://user-images.githubusercontent.com/65487235/157884383-1b75feb1-45d8-4430-b636-3f7e06577347.png" alt="Ghost" width="200px">
-  </a>
-  <a href="https://ghost.org/#gh-dark-mode-only" target="_blank">
-    <img src="https://user-images.githubusercontent.com/65487235/157849205-aa24152c-4610-4d7d-b752-3a8c4f9319e6.png" alt="Ghost" width="200px">
-  </a>
-</p>
-&nbsp;
+# Ghost on Railway (MySQL) Starter
 
-<p align="center">
-    <a href="https://ghost.org/">Ghost.org</a> •
-    <a href="https://forum.ghost.org">Forum</a> •
-    <a href="https://ghost.org/docs/">Docs</a> •
-    <a href="https://github.com/TryGhost/Ghost/blob/main/.github/CONTRIBUTING.md">Contributing</a> •
-    <a href="https://twitter.com/ghost">Twitter</a>
-    <br /><br />
-    <a href="https://ghost.org/">
-        <img src="https://img.shields.io/badge/downloads-100M+-brightgreen.svg" alt="Downloads" />
-    </a>
-    <a href="https://github.com/TryGhost/Ghost/releases/">
-        <img src="https://img.shields.io/github/release/TryGhost/Ghost.svg" alt="Latest release" />
-    </a>
-    <a href="https://github.com/TryGhost/Ghost/actions">
-        <img src="https://github.com/TryGhost/Ghost/workflows/CI/badge.svg?branch=main" alt="Build status" />
-    </a>
-    <a href="https://github.com/TryGhost/Ghost/contributors/">
-        <img src="https://img.shields.io/github/contributors/TryGhost/Ghost.svg" alt="Contributors" />
-    </a>
-</p>
+Production-ready starter scaffolding for running a **self-hosted Ghost paywall site** on **Railway** using **MySQL**, persistent content storage, SMTP, and Stripe memberships.
 
-&nbsp;
+This repository focuses on deployment and operations scaffolding. It does **not** modify Ghost internals.
 
-> [!NOTE]
-> Love open source? We're hiring! Ghost is looking staff engineers to [join the team](https://careers.ghost.org) and work with us full-time
+## Quick Start
 
-<a href="https://ghost.org/"><img src="https://user-images.githubusercontent.com/353959/169805900-66be5b89-0859-4816-8da9-528ed7534704.png" alt="Fiercely independent, professional publishing. Ghost is the most popular open source, headless Node.js CMS which already works with all the tools you know and love." /></a>
+1. Copy env template:
+   ```bash
+   cp .env.example .env
+   ```
+2. Fill `.env` with local values (especially SMTP placeholders if testing email flows).
+3. Start local stack:
+   ```bash
+   ./scripts/local-up.sh
+   ```
+4. Open Ghost at [http://localhost:2368](http://localhost:2368).
+5. Stop local stack:
+   ```bash
+   ./scripts/local-down.sh
+   ```
 
-&nbsp;
+## Architecture
 
-<a href="https://ghost.org/pricing/#gh-light-mode-only" target="_blank"><img src="https://user-images.githubusercontent.com/65487235/157849437-9b8fcc48-1920-4b26-a1e8-5806db0e6bb9.png" alt="Ghost(Pro)" width="165px" /></a>
-<a href="https://ghost.org/pricing/#gh-dark-mode-only" target="_blank"><img src="https://user-images.githubusercontent.com/65487235/157849438-79889b04-b7b6-4ba7-8de6-4c1e4b4e16a5.png" alt="Ghost(Pro)" width="165px" /></a>
-
-The easiest way to get a production instance deployed is with our official **[Ghost(Pro)](https://ghost.org/pricing/)** managed service. It takes about 2 minutes to launch a new site with worldwide CDN, backups, security and maintenance all done for you.
-
-For most people this ends up being the best value option because of [how much time it saves](https://ghost.org/docs/hosting/) — and 100% of revenue goes to the Ghost Foundation; funding the maintenance and further development of the project itself. So you’ll be supporting open source software *and* getting a great service!
-
-&nbsp;
-
-# Quickstart install
-
-If you want to run your own instance of Ghost, in most cases the best way is to use our **CLI tool**
-
-```
-npm install ghost-cli -g
+```mermaid
+flowchart LR
+    U[Site Visitors] -->|HTTPS| R[Railway Ingress + Custom Domain]
+    R --> G[Ghost Service\n(official Ghost container)]
+    G --> M[(Railway MySQL)]
+    G --> V[(Persistent Volume\n/content)]
+    G --> S[SMTP Provider\n(Postmark/Mailgun/SES/etc.)]
+    G --> P[Stripe API]
 ```
 
-&nbsp;
+## Prerequisites
 
-Then, if installing locally add the `local` flag to get up and running in under a minute - [Local install docs](https://ghost.org/docs/install/local/)
+- Railway account + project
+- GitHub repository connected to Railway
+- SMTP provider credentials (for magic link login/newsletters)
+- Stripe account (for paid memberships)
+- Docker + Docker Compose (for local development)
 
+## Railway Production Setup
+
+Detailed guide: [docs/railway-deploy.md](docs/railway-deploy.md)
+
+High-level flow:
+1. Create Railway project.
+2. Add **MySQL** service.
+3. Add **Ghost** service from this repo (Dockerfile-based deploy).
+4. Attach persistent volume mounted at `/var/lib/ghost/content`.
+5. Configure required environment variables.
+6. Add custom domain in Railway.
+7. Configure Ghost memberships + Stripe inside Ghost Admin.
+
+## Required Railway Variables
+
+| Variable | Required | Example | Notes |
+|---|---|---|---|
+| `url` | Yes | `https://blog.example.com` | Public canonical URL |
+| `PORT` | Yes | `2368` | Railway injects runtime port if configured |
+| `NODE_ENV` | Yes | `production` | Production mode |
+| `database__client` | Yes | `mysql` | Must be mysql |
+| `database__connection__host` | Yes | `${{MYSQLHOST}}` | Map from Railway MySQL service |
+| `database__connection__port` | Yes | `${{MYSQLPORT}}` | Usually 3306 |
+| `database__connection__user` | Yes | `${{MYSQLUSER}}` | MySQL username |
+| `database__connection__password` | Yes | `${{MYSQLPASSWORD}}` | MySQL password |
+| `database__connection__database` | Yes | `${{MYSQLDATABASE}}` | MySQL database name |
+| `mail__transport` | Yes | `SMTP` | Required for member emails |
+| `mail__from` | Yes | `noreply@example.com` | Sender address |
+| `mail__options__host` | Yes | `smtp.postmarkapp.com` | SMTP host |
+| `mail__options__port` | Yes | `587` | STARTTLS port |
+| `mail__options__secure` | Yes | `false` | Use false for port 587 STARTTLS |
+| `mail__options__auth__user` | Yes | `postmark-server-token` | SMTP username |
+| `mail__options__auth__pass` | Yes | `postmark-server-token` | SMTP password/token |
+
+## Local Development
+
+- Uses `docker-compose.yml` for Ghost + MySQL.
+- Ghost content persisted to `./data/ghost/content`.
+- MySQL data persisted in Docker named volume `mysql_data`.
+
+Commands:
+
+```bash
+./scripts/verify-env.sh
+./scripts/local-up.sh
+./scripts/local-down.sh
 ```
-ghost install local
-```
 
-&nbsp;
+## SMTP Setup
 
-or on a server run the full install, including automatic SSL setup using LetsEncrypt - [Production install docs](https://ghost.org/docs/install/ubuntu/)
+- SMTP is mandatory for Ghost member sign-in links and newsletter sends.
+- See [docs/smtp.md](docs/smtp.md).
 
-```
-ghost install
-```
+## Stripe Setup
 
-&nbsp;
+- Stripe is configured inside Ghost Admin after deployment.
+- See [docs/stripe.md](docs/stripe.md).
 
-Check out our [official documentation](https://ghost.org/docs/) for more information about our [recommended hosting stack](https://ghost.org/docs/hosting/) & properly [upgrading Ghost](https://ghost.org/docs/update/), plus everything you need to develop your own Ghost [themes](https://ghost.org/docs/themes/) or work with [our API](https://ghost.org/docs/content-api/).
+## Domain and HTTPS
 
-### Contributors & advanced developers
+- Railway handles ingress TLS certificates and HTTPS termination.
+- Set Ghost `url` to the final `https://` custom domain.
+- Add/verify domain in Railway before public launch.
 
-For anyone wishing to contribute to Ghost or to hack/customize core files we recommend following our full development setup guides: [Contributor guide](https://ghost.org/docs/contributing/) • [Developer setup](https://ghost.org/docs/install/source/)
+## Common Failure Modes
 
-&nbsp;
+1. **Ghost boot loops with DB errors**
+   - Usually incorrect `database__connection__*` values.
+2. **Member login emails never arrive**
+   - SMTP credentials wrong or provider blocking sender domain.
+3. **Admin URL redirects incorrectly**
+   - `url` does not match deployed domain.
+4. **Images/themes disappear after deploy**
+   - Persistent volume not attached at `/var/lib/ghost/content`.
+5. **Paid plans fail at checkout**
+   - Stripe not connected in Ghost Admin or webhook not configured.
 
-# Ghost sponsors
+## Backup and Recovery Notes
 
-A big thanks to our sponsors and partners who make Ghost possible. If you're interested in sponsoring Ghost and supporting the project, please check out our profile on [GitHub sponsors](https://github.com/sponsors/TryGhost) :heart:
+- **Database**: use Railway MySQL backup strategy/snapshots.
+- **Content volume**: regularly export `/var/lib/ghost/content`.
+- **Ghost export**: periodically export members/posts from Ghost Admin as an additional fallback.
+- Store restore runbooks with timestamps and test restoration quarterly.
 
-**[DigitalOcean](https://m.do.co/c/9ff29836d717)** • **[Fastly](https://www.fastly.com/)** • **[Tinybird](https://tbrd.co/ghost)**
+## What this repo does NOT do
 
-&nbsp;
+- No custom Ghost theme development.
+- No Ghost core/plugin code modifications.
+- No reverse proxy containers (Caddy/Nginx) in front of Ghost.
+- No infrastructure-as-code (Terraform/Kubernetes/Helm).
 
-# Getting help
+## License
 
-Everyone can get help and support from a large community of developers over on the [Ghost forum](https://forum.ghost.org/). **Ghost(Pro)** customers have access to 24/7 email support.
-
-To stay up to date with all the latest news and product updates, make sure you [subscribe to our changelog newsletter](https://ghost.org/changelog/) — or follow us [on Twitter](https://twitter.com/Ghost), if you prefer your updates bite-sized and facetious. :saxophone::turtle:
-
-&nbsp;
-
-# License & trademark
-
-Copyright (c) 2013-2026 Ghost Foundation - Released under the [MIT license](LICENSE).
-Ghost and the Ghost Logo are trademarks of Ghost Foundation Ltd. Please see our [trademark policy](https://ghost.org/trademark/) for info on acceptable usage.
+MIT. See [LICENSE](LICENSE).
