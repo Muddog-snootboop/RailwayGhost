@@ -1,0 +1,36 @@
+name: Validate Repo
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Pin Yarn Classic
+        run: npm install --global yarn@1.22.22
+
+      - name: Install markdownlint-cli
+        run: yarn global add markdownlint-cli@0.39.0
+
+      - name: Validate Docker Compose syntax
+        run: docker compose --env-file .env.example -f docker-compose.yml config
+
+      - name: Validate workflow YAML syntax
+        run: ruby -e "require 'yaml'; Dir.glob('.github/workflows/*.yml').each { |f| YAML.load_file(f) }"
+
+      - name: Lint Markdown docs
+        run: find README.md AGENTS.md docs -name '*.md' -print0 | xargs -0 $(yarn global bin)/markdownlint
+
+      - name: Verify env template keys
+        run: ./scripts/verify-env.sh --ci
